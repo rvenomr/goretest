@@ -30,6 +30,7 @@ public class RestStepsDefinition {
     private User user;
     private String appendix = "";
     private static JdbcPoolTool jdbcPoolTool;
+    private String xRateLimitLimit = "10000";
 
     @BeforeAll
     public static void beforeAll() {
@@ -82,7 +83,10 @@ public class RestStepsDefinition {
         String[] pathA = path.split("/");
         path = pathA[pathA.length - 1];
         pathA = Arrays.copyOfRange(pathA, 0, pathA.length - 1);
-        RequestSpecification reqS = new RequestSpecBuilder().setBaseUri(Endpoints.URI + Arrays.stream(pathA).collect(Collectors.joining("/"))).build();
+        RequestSpecification reqS = new RequestSpecBuilder().setBaseUri(Endpoints.URI + Arrays.stream(pathA).collect(Collectors.joining("/")))
+                .addHeader("X-RateLimit-Limit", xRateLimitLimit)
+                .addHeader("X-RateLimit-Remaining", xRateLimitLimit)
+                .addHeader("X-RateLimit-Reset", "1").build();
         sendGet("/" + path + appendix, reqS);
     }
 
@@ -99,7 +103,10 @@ public class RestStepsDefinition {
     @When("send GET with previously received user ID")
     public void sendGetWithPreviousUserId() {
         Reporter.log("Thread: " + Thread.currentThread().getId() + " execute 'send GET with previously received user ID' step. Accept type: " + acceptContentType, true);
-        RequestSpecification requestSpecification = new RequestSpecBuilder().setBaseUri(Endpoints.URI + Endpoints.api + Endpoints.user).build();
+        RequestSpecification requestSpecification = new RequestSpecBuilder().setBaseUri(Endpoints.URI + Endpoints.api + Endpoints.user)
+                .addHeader("X-RateLimit-Limit", xRateLimitLimit)
+                .addHeader("X-RateLimit-Remaining", xRateLimitLimit)
+                .addHeader("X-RateLimit-Reset", "1").build();
         String getPath = "/" + id + appendix;
         response = RestAssured.given(requestSpecification)
                 .auth()
@@ -137,8 +144,9 @@ public class RestStepsDefinition {
 
     private RequestSpecification getDefaultRequestConfiguration() {
         return new RequestSpecBuilder().setBaseUri(Endpoints.URI + Endpoints.api)
-                .addHeader("X-RateLimit-Limit", "1000")
-                .addHeader("X-RateLimit-Reset", "0").build();
+                .addHeader("X-RateLimit-Limit", xRateLimitLimit)
+                .addHeader("X-RateLimit-Remaining", xRateLimitLimit)
+                .addHeader("X-RateLimit-Reset", "1").build();
     }
 
     private void writeDownId(Response response) {
@@ -223,7 +231,11 @@ public class RestStepsDefinition {
     @When("send DELETE with previously received user ID")
     public void sendDeleteWithPreviousUserId() {
         Reporter.log("Thread: " + Thread.currentThread().getId() + " execute 'send DELETE with previously received user ID' step. Accept type: " + acceptContentType, true);
-        RequestSpecification requestSpecification = new RequestSpecBuilder().setBaseUri(Endpoints.URI + Endpoints.api + Endpoints.user).build();
+        RequestSpecification requestSpecification = new RequestSpecBuilder().setBaseUri(Endpoints.URI + Endpoints.api + Endpoints.user)
+                .addHeader("X-RateLimit-Limit", xRateLimitLimit)
+                .addHeader("X-RateLimit-Remaining", xRateLimitLimit)
+                .addHeader("X-RateLimit-Reset", "1")
+                .build();
         String getPath = "/" + id + appendix;
         response = RestAssured.given(requestSpecification)
                 .auth()
@@ -234,7 +246,7 @@ public class RestStepsDefinition {
                 .then().assertThat().statusCode(200).extract().response();
     }
 
-    @When("verify that status code is {int}")
+    @When("verify that operation response code is {int}")
     public void verifyThatStatusCodeIs(int code) {
         verifyThatStatusCodeIs(code, response);
     }
@@ -271,14 +283,19 @@ public class RestStepsDefinition {
     }
 
     @When("send GET for user with {string}")
-    public void sendGETForUserWithNameTenali(String reqParametr) {
+    public void sendGetForUserWithNameTenali(String reqParametr) {
+        String param = reqParametr.split("=")[0];
+        String value = reqParametr.split("=")[1];
         RequestSpecification requestSpecification = new RequestSpecBuilder().setBaseUri(Endpoints.URI + Endpoints.api)
-                .addQueryParam(reqParametr.split("=")[0], reqParametr.split("=")[1]).build();
+                .addHeader("X-RateLimit-Limit", xRateLimitLimit)
+                .addHeader("X-RateLimit-Remaining", xRateLimitLimit)
+                .addHeader("X-RateLimit-Reset", "1")
+                .addQueryParam(param, value).build();
         sendGet(Endpoints.user + appendix, requestSpecification);
-        String postfix ="";
-        if(acceptContentType.toString().contains("xml")){
+        String postfix = "";
+        if (acceptContentType.toString().contains("xml")) {
             postfix = "datum.";
         }
-        Assert.assertTrue(response.path(dataPrefix + "data." + postfix + reqParametr.split("=")[0]).toString().contains(reqParametr.split("=")[1]));
+        Assert.assertTrue(response.path(dataPrefix + "data." + postfix + param).toString().contains(value));
     }
 }
