@@ -5,10 +5,49 @@ Feature: User Scenarios
     Given we want to verify '<type>' responses
     When send GET request
     When verify that status code is 200
+    When send GET for user with 'name=Tenali'
     Examples:
       | type |
       | xml  |
       | json |
+
+  Scenario Outline: GET User
+    Given we want to verify '<type>' responses
+    When send GET request
+    When verify that status code is 200
+    When send GET for user with 'email=tenali'
+    Examples:
+      | type |
+      | xml  |
+      | json |
+
+  Scenario Outline: GET User
+    Given we want to verify '<type>' responses
+    When send GET for user with 'gender=male'
+    When verify that status code is 200
+    Examples:
+      | type |
+      | xml  |
+      | json |
+
+  Scenario Outline: GET User
+    Given we want to verify '<type>' responses
+    When send GET for user with 'status=active'
+    When verify that status code is 200
+    Examples:
+      | type |
+      | xml  |
+      | json |
+
+  Scenario Outline: GET User
+    Given we want to verify '<type>' responses
+    When send GET for user with 'status=inactive'
+    When verify that status code is 200
+    Examples:
+      | type |
+      | xml  |
+      | json |
+
 
   Scenario Outline: GET User posts
     Given we want to verify '<type>' responses

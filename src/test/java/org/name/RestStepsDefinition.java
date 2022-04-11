@@ -72,7 +72,8 @@ public class RestStepsDefinition {
     @When("send GET request")
     public void sendGet() {
         Reporter.log("Thread: " + Thread.currentThread().getId() + " execute 'send GET request' step. Accept type: " + acceptContentType, true);
-        sendGet(Endpoints.api + Endpoints.user + appendix, requestSpecification);
+        RequestSpecification requestSpecification = getDefaultRequestConfiguration();
+        sendGet(Endpoints.user + appendix, requestSpecification);
     }
 
     @When("send GET request to path {string}")
@@ -122,6 +123,7 @@ public class RestStepsDefinition {
     public void sendPost() {
         Reporter.log("Thread: " + Thread.currentThread().getId() + " execute 'send POST' step. Accept type: " + acceptContentType, true);
         ifUserNotPreserntSetUserWithRandomEmail();
+        RequestSpecification requestSpecification = getDefaultRequestConfiguration();
         response = RestAssured.given()
                 .auth()
                 .oauth2(token)
@@ -131,6 +133,12 @@ public class RestStepsDefinition {
                 .post(Endpoints.user + appendix)
                 .then().assertThat().statusCode(200).extract().response();
         writeDownId(response);
+    }
+
+    private RequestSpecification getDefaultRequestConfiguration() {
+        return new RequestSpecBuilder().setBaseUri(Endpoints.URI + Endpoints.api)
+                .addHeader("X-RateLimit-Limit", "1000")
+                .addHeader("X-RateLimit-Reset", "0").build();
     }
 
     private void writeDownId(Response response) {
@@ -145,12 +153,13 @@ public class RestStepsDefinition {
     @When("send PUT")
     public void sendPUT() {
         Reporter.log("Thread: " + Thread.currentThread().getId() + " execute 'send PUT' step. Accept type: " + acceptContentType, true);
+        RequestSpecification requestSpecification = getDefaultRequestConfiguration();
         ifUserNotPreserntSetUserWithRandomEmail();
-        response = RestAssured.given().auth().oauth2(token)
+        response = RestAssured.given(requestSpecification).auth().oauth2(token)
                 .accept(acceptContentType)
                 .contentType(contentType)
                 .body(user)
-                .put(Endpoints.api + Endpoints.user + "/" + id + appendix)
+                .put(Endpoints.user + "/" + id + appendix)
                 .then().assertThat().statusCode(200).extract().response();
     }
 
@@ -164,39 +173,39 @@ public class RestStepsDefinition {
 
     @When("send POST with illformated data")
     public void sendPostWithIllformatedData() {
-        RequestSpecification requestSpecification = new RequestSpecBuilder().setBaseUri(Endpoints.URI + Endpoints.api).build();
-        sendRequestWithIllformatedDataByMethodToPath("POST",Endpoints.user + appendix, requestSpecification);
+        RequestSpecification requestSpecification = getDefaultRequestConfiguration();
+        sendRequestWithIllformatedDataByMethodToPath("POST", Endpoints.user + appendix, requestSpecification);
     }
 
     //PUT or PATCH
     @When("send {string} with illformated data")
     public void sendPutWithIllformatedData(String method) {
-        RequestSpecification requestSpecification = new RequestSpecBuilder().setBaseUri(Endpoints.URI + Endpoints.api).build();
-        sendRequestWithIllformatedDataByMethodToPath(method,Endpoints.user + "/" + id + appendix, requestSpecification);
+        RequestSpecification requestSpecification = getDefaultRequestConfiguration();
+        sendRequestWithIllformatedDataByMethodToPath(method, Endpoints.user + "/" + id + appendix, requestSpecification);
     }
 
     private void sendRequestWithIllformatedDataByMethodToPath(String method, String path, RequestSpecification requestSpecification) {
         Reporter.log("Thread: " + Thread.currentThread().getId() + " execute 'send" + method + "with illformated data' step. Accept type:" + acceptContentType);
         //mistyped gender
         user.setGender("malel");
-        sendRequestWithTypeAndBody(method, Endpoints.user + appendix, requestSpecification);
+        sendRequestWithTypeAndBody(method, path, requestSpecification);
         verifyThatStatusCodeIs(422, response);
 
         //mistyped status
         user.setGender("male");
         user.setStatus("activel");
-        sendRequestWithTypeAndBody(method, Endpoints.user + appendix, requestSpecification);
+        sendRequestWithTypeAndBody(method, path, requestSpecification);
         verifyThatStatusCodeIs(422, response);
 
         //mistyped email
         user.setStatus("active");
         user.setEmail("blabla.@a@" + Math.random() + "ce.com");
-        sendRequestWithTypeAndBody(method, Endpoints.user + appendix, requestSpecification);
+        sendRequestWithTypeAndBody(method, path, requestSpecification);
         verifyThatStatusCodeIs(422, response);
         user.setEmail("tenalis.ramakrishna@\" + Math.random() + \"ce.com");
         //empty name
         user.setName("");
-        sendRequestWithTypeAndBody(method, Endpoints.user + appendix, requestSpecification);
+        sendRequestWithTypeAndBody(method, path, requestSpecification);
         verifyThatStatusCodeIs(422, response);
     }
 
@@ -259,5 +268,17 @@ public class RestStepsDefinition {
                 .body("{\"name\":\"Tenali Ramakrishna\", \"gender\":\"male\", \"email\":\"tenalis.ramakrishna@19ce.com\", \"status\":\"active\"")
                 .patch(Endpoints.user + "/" + id + appendix)
                 .then().assertThat().statusCode(200).extract().response();
+    }
+
+    @When("send GET for user with {string}")
+    public void sendGETForUserWithNameTenali(String reqParametr) {
+        RequestSpecification requestSpecification = new RequestSpecBuilder().setBaseUri(Endpoints.URI + Endpoints.api)
+                .addQueryParam(reqParametr.split("=")[0], reqParametr.split("=")[1]).build();
+        sendGet(Endpoints.user + appendix, requestSpecification);
+        String postfix ="";
+        if(acceptContentType.toString().contains("xml")){
+            postfix = "datum.";
+        }
+        Assert.assertTrue(response.path(dataPrefix + "data." + postfix + reqParametr.split("=")[0]).toString().contains(reqParametr.split("=")[1]));
     }
 }

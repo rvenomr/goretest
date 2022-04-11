@@ -5,6 +5,7 @@ import org.testng.Reporter;
 
 import java.sql.*;
 import java.util.LinkedList;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class JdbcPoolTool {
 
@@ -16,12 +17,12 @@ public class JdbcPoolTool {
     private static final String user = "sa";
     private static final String pwd = "";
 
-    private static final int INITIAL_CAPACITY = 50;
+    private static AtomicInteger INITIAL_CAPACITY = new AtomicInteger(50);
     private LinkedList<Connection> pool = new LinkedList<Connection>();
 
     public JdbcPoolTool() throws SQLException {
         //init();
-        for (int i = 0; i < INITIAL_CAPACITY; i++) {
+        for (int i = 0; i < INITIAL_CAPACITY.get(); i++) {
             pool.add(DriverManager.getConnection(connString, user, pwd));
         }
     }
@@ -29,12 +30,14 @@ public class JdbcPoolTool {
     public synchronized Connection getConnection() throws SQLException {
         if (pool.isEmpty()) {
             pool.add(DriverManager.getConnection(connString, user, pwd));
+            INITIAL_CAPACITY.incrementAndGet();
         }
+        INITIAL_CAPACITY.decrementAndGet();
         return pool.pop();
     }
 
     public void close() throws SQLException {
-        for (int i = 0; i < INITIAL_CAPACITY; i++) pool.get(i).close();
+        for (int i = 0; i < INITIAL_CAPACITY.get(); i++) pool.get(i).close();
     }
 
     public synchronized void returnConnection(Connection connection) {
@@ -63,7 +66,6 @@ public class JdbcPoolTool {
                     " STATUS VARCHAR(255)," +
                     " PRIMARY KEY ( id ))";
             stmt.executeUpdate(sql);
-            sql = "INSERT INTO USERS VALUES (4406, 'Tenali Ramakrishna','tenalis.ramakrishna@1934ce.com', 'male', 'active');";
             stmt.executeUpdate(sql);
             stmt.close();
             conn.close();
@@ -91,7 +93,7 @@ public class JdbcPoolTool {
     }
 
     public User getUser(String query) {
-        User user;
+        User user = new User();
         try (Statement stmt = getConnection().createStatement()) {
             ResultSet rs = stmt.executeQuery(query);
             if(rs.next()){
@@ -99,7 +101,7 @@ public class JdbcPoolTool {
                 String email = rs.getString("email");
                 String gender = rs.getString("gender");
                 String status = rs.getString("status");
-                user = new User(name,gender,email,status)
+                user = new User(email,name,gender,status);
             }
         } catch (SQLException e) {
             Reporter.log(e.getMessage());
